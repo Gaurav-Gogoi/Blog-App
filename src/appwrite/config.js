@@ -30,6 +30,8 @@ export class Service{
                     status,
                     userId,
                 }
+
+                
             )
         } catch (error) {
             console.log("Appwrite serive :: createPost :: error", error);

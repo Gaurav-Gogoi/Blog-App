@@ -2,9 +2,9 @@ import React, { useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { Button, Input, RTE, Select } from "../index";
 import appwriteService from "../../appwrite/config";
+import authService from "../../appwrite/auth"; // ✅ Added import
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-
 
 export default function PostForm({ post }) {
     const { register, handleSubmit, watch, setValue, control, getValues } = useForm({
@@ -23,16 +23,16 @@ export default function PostForm({ post }) {
         try {
             if (post) {
                 const file = data.image?.[0] ? await appwriteService.uploadFile(data.image[0]) : null;
-    
+
                 if (file) {
                     await appwriteService.deleteFile(post.featuredImage);
                 }
-    
+
                 const dbPost = await appwriteService.updatePost(post.$id, {
                     ...data,
-                    featuredImage: file ? file.$id : post.featuredImage, // fallback
+                    featuredImage: file ? file.$id : post.featuredImage,
                 });
-    
+
                 if (dbPost) {
                     navigate(`/post/${dbPost.$id}`);
                 }
@@ -41,20 +41,28 @@ export default function PostForm({ post }) {
                     alert("Please upload a featured image");
                     return;
                 }
-    
+
                 const file = await appwriteService.uploadFile(data.image[0]);
-    
+
                 if (!file || !file.$id) {
                     alert("Image upload failed");
                     return;
                 }
-    
+
+                // ✅ Get the current user directly from Appwrite (instead of Redux)
+                const currentUser = await authService.getCurrentUser();
+
+                if (!currentUser || !currentUser.$id) {
+                    alert("You must be logged in to create a post.");
+                    return;
+                }
+
                 const dbPost = await appwriteService.createPost({
                     ...data,
-                    userId: userData?.$id,
+                    userId: currentUser.$id,
                     featuredImage: file.$id,
                 });
-    
+
                 if (dbPost) {
                     navigate(`/post/${dbPost.$id}`);
                 }
@@ -64,7 +72,6 @@ export default function PostForm({ post }) {
             alert("Something went wrong. Please try again.");
         }
     };
-    
 
     const slugTransform = useCallback((value) => {
         if (value && typeof value === "string")
